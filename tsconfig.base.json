@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@studio/shared": ["packages/shared/src/index.ts"],
+      "@studio/db": ["packages/db/src/client.ts"],
+      "@studio/providers": ["packages/providers/src/registry.ts"],
+      "@studio/providers/*": ["packages/providers/src/*"]
+    }
+  }
+}

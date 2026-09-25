@@ -1,0 +1,9 @@
+/* FILE: apps/web/styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #f9fafb;
+  color: #111827;
+}

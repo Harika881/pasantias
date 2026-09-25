@@ -1,0 +1,19 @@
+{
+  "name": "ai-youtube-studio",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,worker,web -c blue,green,magenta \"npm run dev -w apps/api\" \"npm run dev -w apps/worker\" \"npm run dev -w apps/web\"",
+    "build": "npm run build -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "prisma:generate": "npm run generate -w packages/db",
+    "prisma:migrate": "npm run migrate -w packages/db"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^6.0.3"
+  }
+}

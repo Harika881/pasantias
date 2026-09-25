@@ -1,0 +1,210 @@
+// FILE: packages/db/prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://studio:studio@localhost:5432/studio"
+}
+// env("DATABASE_URL")
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String            @id @default(cuid())
+  email           String            @unique
+  passwordHash    String
+  name            String?
+  createdAt       DateTime          @default(now())
+  projects        Project[]
+  youtubeChannels YouTubeChannel[]
+  usageRecords    UsageRecord[]
+  providerSettings ProviderSetting[]
+}
+
+model ProviderSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  provider  String
+  apiKeyEnc String?
+  config    Json?
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, category])
+}
+
+model Project {
+  id                String           @id @default(cuid())
+  userId            String
+  title             String
+  inputText         String
+  audience          String?
+  language          String           @default("en")
+  style             String?
+  presenterStyle    String?
+  category          String?
+  durationTargetSec Int?
+  qualityPreset     String           @default("BALANCED")
+  aspectRatio       String           @default("16:9")
+  status            String           @default("draft")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  user              User             @relation(fields: [userId], references: [id])
+  scripts           Script[]
+  videos            Video[]
+  jobs              GenerationJob[]
+  publishingJobs    PublishingJob[]
+}
+
+model Script {
+  id             String   @id @default(cuid())
+  projectId      String
+  version        Int      @default(1)
+  fullText       String
+  sectionsJson   Json
+  retentionScore Int?
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId], references: [id])
+  scenes         Scene[]
+}
+
+model Scene {
+  id           String   @id @default(cuid())
+  scriptId     String
+  sceneIndex   Int
+  startTime    Float
+  endTime      Float
+  narration    String
+  visualType   String
+  visualPrompt String
+  onScreenText String?
+  camera       String?
+  transition   String?
+  musicCue     String?
+  soundEffect  String?
+  caption      String?
+  interaction  String?
+  status       String   @default("pending")
+  script       Script   @relation(fields: [scriptId], references: [id])
+  assets       Asset[]
+  audio        Audio?
+}
+
+model Audio {
+  id                 String   @id @default(cuid())
+  sceneId            String   @unique
+  assetId            String?
+  durationSec        Float
+  wordTimestampsJson Json
+  scene              Scene    @relation(fields: [sceneId], references: [id])
+}
+
+model Avatar {
+  id         String   @id @default(cuid())
+  projectId  String
+  provider   String
+  config     Json
+  previewUrl String?
+  createdAt  DateTime @default(now())
+}
+
+model Asset {
+  id         String   @id @default(cuid())
+  sceneId    String?
+  projectId  String?
+  type       String
+  provider   String?
+  url        String
+  storageKey String
+  license    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  scene      Scene?   @relation(fields: [sceneId], references: [id])
+}
+
+model Video {
+  id            String       @id @default(cuid())
+  projectId     String
+  status        String       @default("pending")
+  finalUrl      String?
+  thumbnailUrls Json?
+  titleOptions  Json?
+  description   String?
+  tags          Json?
+  chapters      Json?
+  aspectRatio   String       @default("16:9")
+  qcReportJson  Json?
+  createdAt     DateTime     @default(now())
+  project       Project      @relation(fields: [projectId], references: [id])
+  shorts        ShortVideo[]
+}
+
+model ShortVideo {
+  id       String @id @default(cuid())
+  videoId  String
+  url      String
+  startSec Float
+  endSec   Float
+  hook     String
+  video    Video  @relation(fields: [videoId], references: [id])
+}
+
+model GenerationJob {
+  id          String    @id @default(cuid())
+  projectId   String
+  stage       String
+  status      String    @default("pending")
+  message     String?
+  progressPct Int       @default(0)
+  costUsd     Float     @default(0)
+  attempts    Int       @default(0)
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  project     Project   @relation(fields: [projectId], references: [id])
+}
+
+model Provider {
+  id          String  @id @default(cuid())
+  category    String
+  name        String
+  isActive    Boolean @default(true)
+  costPerUnit Float?
+  unit        String?
+}
+
+model YouTubeChannel {
+  id              String    @id @default(cuid())
+  userId          String
+  channelId       String
+  channelTitle    String
+  accessTokenEnc  String
+  refreshTokenEnc String
+  tokenExpiry     DateTime?
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model PublishingJob {
+  id             String    @id @default(cuid())
+  projectId      String
+  channelId      String?
+  status         String    @default("pending")
+  privacy        String    @default("private")
+  scheduledAt    DateTime?
+  youtubeVideoId String?
+  error          String?
+  createdAt      DateTime  @default(now())
+  project        Project   @relation(fields: [projectId], references: [id])
+}
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String?
+  category  String
+  provider  String
+  units     Float
+  costUsd   Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}

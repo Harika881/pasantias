@@ -1,0 +1,4 @@
+// FILE: packages/db/src/client.ts
+import { PrismaClient } from "@prisma/client";
+export const prisma = new PrismaClient();
+export * from "@prisma/client";
