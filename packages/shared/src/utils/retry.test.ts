@@ -18,4 +18,14 @@ describe("withFallback", () => {
     ], { retries: 0 });
     expect(result).toBe("value"); expect(providerUsed).toBe("b");
   });
+
+  it("reports when no providers are configured", async () => {
+    await expect(withFallback([])).rejects.toThrow("No providers are configured");
+  });
+
+  it("includes the final provider error when all providers fail", async () => {
+    await expect(withFallback([
+      { name: "openai-tts", run: async () => { throw new Error("Unauthorized"); } },
+    ], { retries: 0 })).rejects.toThrow("All providers failed (openai-tts): Unauthorized");
+  });
 });

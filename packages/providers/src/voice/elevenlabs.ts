@@ -1,20 +1,33 @@
-// FILE: packages/providers/src/video/mock.ts
-import { execSync } from "child_process";
+import axios from "axios";
+import fs from "fs";
 import path from "path";
-import { VideoProvider } from "../interfaces";
+import { VoiceProvider } from "../interfaces";
 import { tmpDir } from "../utils/paths";
+import { estimateWordTimestamps } from "../utils/timestamps";
 
-export class MockVideoProvider implements VideoProvider {
-  name = "mock";
-  async generateClip(prompt: string, durationSec: number) {
-    const localPath = path.join(tmpDir(), `clip_${Date.now()}.mp4`);
-    const label = prompt.replace(/["':]/g, "").slice(0, 40);
-    execSync(
-      `ffmpeg -y -f lavfi -i color=c=0x111827:s=1920x1080:d=${durationSec} ` +
-      `-vf "drawtext=text='${label}':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=(h-text_h)/2,zoompan=z='min(zoom+0.0008,1.15)':d=${Math.round(durationSec * 25)}:s=1920x1080" ` +
-      `-c:v libx264 -pix_fmt yuv420p -t ${durationSec} "${localPath}"`,
-      { stdio: "ignore" }
+export class ElevenLabsVoiceProvider implements VoiceProvider {
+  name = "elevenlabs";
+
+  async synthesize(text: string, opts?: { voiceId?: string; speed?: number; language?: string }) {
+    const voiceId = opts?.voiceId || process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM";
+    const response = await axios.post<ArrayBuffer>(
+      `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`,
+      {
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: opts?.speed || 1 },
+        ...(opts?.language ? { language_code: opts.language } : {}),
+      },
+      {
+        headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+        responseType: "arraybuffer",
+        timeout: 60000,
+      },
     );
-    return { url: localPath, localPath };
+
+    const filePath = path.join(tmpDir(), `voice_${Date.now()}.mp3`);
+    fs.writeFileSync(filePath, Buffer.from(response.data));
+    const words = estimateWordTimestamps(text, text.split(/\s+/).length / 2.5);
+    return { audioUrl: filePath, durationSec: words.at(-1)?.end || 0, words };
   }
 }

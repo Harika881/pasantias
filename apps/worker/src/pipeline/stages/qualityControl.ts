@@ -6,8 +6,11 @@ import { runQcChecks } from "../../render/qualityChecks";
 export async function runQualityControl(ctx: PipelineContext) {
   const video = await prisma.video.findFirstOrThrow({ where: { projectId: ctx.projectId }, orderBy: { createdAt: "desc" } });
   const report = await runQcChecks(video.finalUrl!);
-  await prisma.video.update({ where: { id: video.id }, data: { qcReportJson: report as any } });
+  await prisma.video.update({
+    where: { id: video.id },
+    data: { qcReportJson: report as any, status: report.passed ? "ready" : "failed" },
+  });
   if (!report.passed) {
-    await prisma.generationJob.create({ data: { projectId: ctx.projectId, stage: "quality_control", status: "completed", message: `QC warnings: ${report.issues.join("; ")}` } });
+    throw new Error(`Quality control failed: ${report.issues.join("; ")}`);
   }
 }

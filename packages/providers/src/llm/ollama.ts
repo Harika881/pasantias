@@ -3,7 +3,7 @@ import axios from "axios";
 import { withRetry } from "@studio/shared";
 import { JsonLLMBase } from "./jsonLlmBase";
 
-const MODEL = process.env.OLLAMA_MODEL || "llama3.1:8b";
+const MODEL = process.env.OLLAMA_MODEL || "llama3.2:latest";
 const HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 
 export class OllamaLLMProvider extends JsonLLMBase {

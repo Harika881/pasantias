@@ -45,6 +45,9 @@ export async function withFallback<T>(
   providers: Array<{ name: string; run: () => Promise<T> }>,
   retryOpts: RetryOptions = {}
 ): Promise<{ result: T; providerUsed: string }> {
+  if (providers.length === 0) {
+    throw new ProviderError("No providers are configured", "none");
+  }
   let lastErr: unknown;
   for (const p of providers) {
     try {
@@ -54,5 +57,7 @@ export async function withFallback<T>(
       lastErr = err;
     }
   }
-  throw new ProviderError("All providers failed", providers.map((p) => p.name).join(","), lastErr);
+  const providerNames = providers.map((provider) => provider.name).join(",");
+  const reason = lastErr instanceof Error ? `: ${lastErr.message}` : "";
+  throw new ProviderError(`All providers failed (${providerNames})${reason}`, providerNames, lastErr);
 }

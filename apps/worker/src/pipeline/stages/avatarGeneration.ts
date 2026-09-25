@@ -9,6 +9,7 @@ export async function runAvatarGeneration(ctx: PipelineContext) {
   const project = await prisma.project.findUniqueOrThrow({ where: { id: ctx.projectId } });
   const scenes = await prisma.scene.findMany({ where: { scriptId: ctx.scriptId, visualType: "avatar" } });
   const avatarChain = providers.avatarFallbackChain();
+  if (avatarChain.length === 0) return;
 
   const avatarConfig = { presenterStyle: project.presenterStyle || "professional, friendly", imageUrl: undefined };
   await prisma.avatar.create({ data: { projectId: ctx.projectId, provider: avatarChain[0].name, config: avatarConfig } });

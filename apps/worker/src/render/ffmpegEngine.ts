@@ -61,7 +61,7 @@ export async function composeFinalVideo(params: {
         .input(resolveMediaInput(params.musicUrl!))
         .complexFilter([
           "[1:a]volume=0.18[music]",
-          "[0:a][music]sidechaincompress=threshold=0.05:ratio=8:attack=5:release=300[music_ducked]",
+          "[music][0:a]sidechaincompress=threshold=0.05:ratio=8:attack=5:release=300[music_ducked]",
           "[0:a][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[aout]",
         ])
         .outputOptions(["-map", "0:v", "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac", "-shortest"])
@@ -81,6 +81,7 @@ async function buildSceneClip(scene: SceneWithAssets, workDir: string, w: number
   const videoAsset = scene.assets.find((a) => a.type === "video");
   const imageAsset = scene.assets.find((a) => a.type === "image");
   const audioAsset = scene.assets.find((a) => a.type === "audio");
+  const captionAsset = scene.assets.find((a) => a.type === "caption");
   const sfxAsset = scene.assets.find((a) => a.type === "sfx");
 
   const camera = cameraFilter(scene.camera, duration, w, h);
@@ -95,7 +96,11 @@ async function buildSceneClip(scene: SceneWithAssets, workDir: string, w: number
     }
     if (audioAsset) cmd.input(resolveMediaInput(audioAsset.url));
 
-      const vf = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}${camera}`;
+      const baseFilters = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}${camera}`;
+      const captionPath = captionAsset ? resolveMediaInput(captionAsset.url) : undefined;
+      const vf = captionPath
+        ? `${baseFilters},subtitles='${escapeFilterPath(captionPath)}'`
+        : baseFilters;
     cmd.outputOptions(["-t", String(duration), "-vf", vf, "-c:v", "libx264", "-pix_fmt", "yuv420p"]);
     if (audioAsset) cmd.outputOptions(["-map", "0:v", "-map", "1:a", "-c:a", "aac", "-shortest"]);
     else cmd.outputOptions(["-an"]);
@@ -106,12 +111,16 @@ async function buildSceneClip(scene: SceneWithAssets, workDir: string, w: number
   return outPath;
 }
 
+function escapeFilterPath(input: string) {
+  return input.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
+}
+
 function cameraFilter(camera: string | null, duration: number, w: number, h: number) {
   const frames = Math.round(duration * 25);
   switch (camera) {
     case "slow_zoom_in": return `,zoompan=z='min(zoom+0.0006,1.12)':d=${frames}:s=${w}x${h}`;
     case "slow_zoom_out": return `,zoompan=z='if(eq(on,1),1.12,max(1.0,zoom-0.0006))':d=${frames}:s=${w}x${h}`;
-    default: return "";
+    default: return `,zoompan=z='min(zoom+0.0002,1.04)':d=1:s=${w}x${h}:fps=25`;
   }
 }
 

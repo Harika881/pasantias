@@ -12,6 +12,7 @@ import { TavilyResearchProvider } from "./research/tavily";
 import { MockResearchProvider } from "./research/mock";
 import { OpenAIImageProvider } from "./image/openai";
 import { MockImageProvider } from "./image/mock";
+import { LocalMotionGraphicProvider } from "./image/localMotionGraphic";
 import { PexelsStockProvider } from "./stock/pexels";
 import { MockStockProvider } from "./stock/mock";
 import { RunwayVideoProvider } from "./video/runway";
@@ -19,6 +20,7 @@ import { MockVideoProvider } from "./video/mock";
 import { ElevenLabsVoiceProvider } from "./voice/elevenlabs";
 import { OpenAITTSProvider } from "./voice/openaiTTS";
 import { MockVoiceProvider } from "./voice/mock";
+import { FliteVoiceProvider } from "./voice/flite";
 import { DIDAvatarProvider } from "./avatar/did";
 import { HeyGenAvatarProvider } from "./avatar/heygen";
 import { MockAvatarProvider } from "./avatar/mock";
@@ -32,8 +34,12 @@ import { MockTranscriptionProvider } from "./transcription/mock";
 import { logger } from "@studio/shared";
 
 export class ProviderRegistry {
+  private mockProvidersAllowed() {
+    return process.env.ALLOW_MOCK_PROVIDERS === "true";
+  }
+
   llm(): I.LLMProvider {
-    const pref = (process.env.LLM_PROVIDER || "auto").toLowerCase();
+    const pref = (process.env.LLM_PROVIDER || "ollama").toLowerCase();
     if ((pref === "groq" || pref === "auto") && hasKey("GROQ_API_KEY")) return new GroqLLMProvider();
     if ((pref === "gemini" || pref === "auto") && hasKey("GEMINI_API_KEY")) return new GeminiLLMProvider();
     if (pref === "openai" && hasKey("OPENAI_API_KEY")) return new OpenAILLMProvider();
@@ -46,11 +52,13 @@ export class ProviderRegistry {
 
   llmFallbackChain(): I.LLMProvider[] {
     const chain: I.LLMProvider[] = [];
+    const preferredProvider = (process.env.LLM_PROVIDER || "ollama").toLowerCase();
+    if (preferredProvider === "ollama") return [new OllamaLLMProvider()];
     if (hasKey("GROQ_API_KEY")) chain.push(new GroqLLMProvider());
     if (hasKey("GEMINI_API_KEY")) chain.push(new GeminiLLMProvider());
     chain.push(new OllamaLLMProvider());
     if (hasKey("OPENAI_API_KEY")) chain.push(new OpenAILLMProvider());
-    chain.push(new MockLLMProvider());
+    if (this.mockProvidersAllowed()) chain.push(new MockLLMProvider());
     return chain;
   }
 
@@ -73,8 +81,11 @@ export class ProviderRegistry {
 
   imageFallbackChain(): I.ImageProvider[] {
     const chain: I.ImageProvider[] = [];
-    if (hasKey("OPENAI_API_KEY")) chain.push(new OpenAIImageProvider());
-    chain.push(new MockImageProvider());
+    const preferredProvider = (process.env.IMAGE_PROVIDER || "local").toLowerCase();
+    if (preferredProvider === "openai" && hasKey("OPENAI_API_KEY")) chain.push(new OpenAIImageProvider());
+    chain.push(new LocalMotionGraphicProvider());
+    if (preferredProvider !== "openai" && hasKey("OPENAI_API_KEY")) chain.push(new OpenAIImageProvider());
+    if (this.mockProvidersAllowed()) chain.push(new MockImageProvider());
     return chain;
   }
 
@@ -91,7 +102,7 @@ export class ProviderRegistry {
   videoFallbackChain(): I.VideoProvider[] {
     const chain: I.VideoProvider[] = [];
     if (hasKey("RUNWAY_API_KEY")) chain.push(new RunwayVideoProvider());
-    chain.push(new MockVideoProvider());
+    if (this.mockProvidersAllowed()) chain.push(new MockVideoProvider());
     return chain;
   }
 
@@ -104,8 +115,14 @@ export class ProviderRegistry {
 
   voiceFallbackChain(): I.VoiceProvider[] {
     const chain: I.VoiceProvider[] = [];
-    if (hasKey("OPENAI_API_KEY")) chain.push(new OpenAITTSProvider());
-    chain.push(new MockVoiceProvider());
+    const preferredProvider = (process.env.VOICE_PROVIDER || "flite").toLowerCase();
+    if (preferredProvider === "flite") chain.push(new FliteVoiceProvider());
+    if (preferredProvider === "openai" && hasKey("OPENAI_API_KEY")) chain.push(new OpenAITTSProvider());
+    if (preferredProvider === "elevenlabs" && hasKey("ELEVENLABS_API_KEY")) chain.push(new ElevenLabsVoiceProvider());
+    if (preferredProvider !== "openai" && hasKey("OPENAI_API_KEY")) chain.push(new OpenAITTSProvider());
+    if (preferredProvider !== "elevenlabs" && hasKey("ELEVENLABS_API_KEY")) chain.push(new ElevenLabsVoiceProvider());
+    if (preferredProvider !== "flite") chain.push(new FliteVoiceProvider());
+    if (this.mockProvidersAllowed()) chain.push(new MockVoiceProvider());
     return chain;
   }
 
@@ -120,7 +137,7 @@ export class ProviderRegistry {
     const chain: I.AvatarProvider[] = [];
     if (hasKey("DID_API_KEY")) chain.push(new DIDAvatarProvider());
     if (hasKey("HEYGEN_API_KEY")) chain.push(new HeyGenAvatarProvider());
-    chain.push(new MockAvatarProvider());
+    if (this.mockProvidersAllowed()) chain.push(new MockAvatarProvider());
     return chain;
   }
 

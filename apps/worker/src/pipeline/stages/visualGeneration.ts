@@ -16,14 +16,13 @@ export async function runVisualGeneration(ctx: PipelineContext) {
   );
 
   for (const scene of scenes) {
-    if (scene.visualType === "avatar") continue;
     try {
       let asset: { url: string; localPath: string; license?: string; type: string };
 
       if (scene.visualType === "stock_video" || scene.visualType === "b_roll_video") {
         const found = await stock.searchVideo(scene.visualPrompt);
         if (found) asset = { ...found, localPath: found.url, type: "video" };
-        else {
+        else if (videoChain.length > 0) {
           const { result: gen } = await withFallback(
             videoChain.map((provider) => ({
               name: provider.name,
@@ -32,6 +31,9 @@ export async function runVisualGeneration(ctx: PipelineContext) {
             { retries: 0 },
           );
           asset = { ...gen, license: "generated", type: "video" };
+        } else {
+          const { result: gen } = await generateImage(scene.visualPrompt);
+          asset = { ...gen, license: "generated", type: "image" };
         }
       } else if (scene.visualType === "stock_image" || scene.visualType === "b_roll_image") {
         const found = await stock.searchImage(scene.visualPrompt);

@@ -16,5 +16,5 @@ export async function runComposition(ctx: PipelineContext) {
   });
 
   const stored = await uploadLocalFile(outputPath, `projects/${ctx.projectId}/final`);
-  await prisma.video.create({ data: { projectId: ctx.projectId, status: "ready", finalUrl: stored.url, aspectRatio: project.aspectRatio } });
+  await prisma.video.create({ data: { projectId: ctx.projectId, status: "pending", finalUrl: stored.url, aspectRatio: project.aspectRatio } });
 }
